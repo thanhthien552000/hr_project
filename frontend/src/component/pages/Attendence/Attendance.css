@@ -1,0 +1,95 @@
+/* ===== HEADER ===== */
+.attendance-header {
+  padding: 20px 25px;
+  border-radius: 12px;
+  margin: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.attendance-header h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+/* ===== CONTAINER ===== */
+.attendance-container {
+  background: #fff;
+  margin: 20px;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* ===== TOP BAR (TITLE + SEARCH) ===== */
+.attendance-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.attendance-top h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.attendance-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ===== TABLE ===== */
+.attendance-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.attendance-table thead {
+  background-color: #f5f7fa;
+}
+
+.attendance-table th {
+  text-align: left;
+  padding: 12px;
+  font-weight: 600;
+  color: #333;
+}
+
+.attendance-table td {
+  padding: 12px;
+  border-top: 1px solid #eee;
+  font-size: 16px;
+}
+
+/* Hover giống bảng trước */
+.attendance-table tbody tr:hover {
+  background-color: #f9fafc;
+  transition: 0.2s;
+}
+
+/* ===== BADGE STYLE (điểm nhấn) ===== */
+.badge-green {
+  background: #e6f7ee;
+  color: #2e7d32;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.badge-red {
+  background: #fdecea;
+  color: #c62828;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+}

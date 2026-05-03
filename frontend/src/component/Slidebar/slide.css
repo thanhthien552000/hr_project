@@ -1,0 +1,53 @@
+.sidebar {
+  width: 220px;
+  height: 100vh;
+  background: #0b2545;
+  color: white;
+  position: fixed;
+  top: 0;
+  left: 0;
+  padding: 20px;
+}
+
+.logo {
+  margin-bottom: 30px;
+  margin-top: 40px;
+  font-size: 40px;
+  color: white;
+  cursor: pointer;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar i {
+  width: 20px;
+  text-align: center;
+}
+
+.sidebar a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #cbd5e1;
+  text-decoration: none;
+  margin: 10px 0;
+  padding: 10px;
+  border-radius: 8px;
+  transition: 0.2s;
+}
+
+/* Hover */
+.sidebar a:hover {
+  background-color: #1e3a5f;
+  color: #4dabf7;
+}
+
+/* Active (đang chọn) */
+.sidebar a.active {
+  background-color: #1e3a5f;
+  color: #4dabf7;
+  font-weight: 600;
+}
