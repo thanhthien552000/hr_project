@@ -98,7 +98,7 @@ const Status = () => {
               />
               <span>{item.name}</span>
               <strong>
-                {item.value} · {formatPercent(item.percentage)}
+                {item.value} nhân viên · {formatPercent(item.percentage)}
               </strong>
             </div>
           ))}

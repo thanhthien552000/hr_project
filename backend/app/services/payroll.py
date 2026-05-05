@@ -27,6 +27,12 @@ class PayrollService:
         month: Optional[str] = None,
         department_id: Optional[int] = None,
     ) -> Tuple[List[dict], int]:
+        # Default to latest month with data if no month specified
+        if not month:
+            latest = await self.repo.get_latest_month()
+            if latest:
+                month = latest.strftime("%Y-%m")
+
         salaries, total = await self.repo.get_list(
             offset=offset, limit=limit, month=month, department_id=department_id,
         )
@@ -64,13 +70,15 @@ class PayrollService:
     # 3. Tạo bản ghi lương
     async def create(self, data: SalaryCreate) -> dict:
         month_date = date.fromisoformat(f"{data.salary_month}-01")
+        # Always calculate net_salary = base + bonus - deductions
+        net_salary = data.base_salary + data.bonus - data.deductions
         salary = Salary(
             employee_id=data.employee_id,
             salary_month=month_date,
             base_salary=data.base_salary,
             bonus=data.bonus,
             deductions=data.deductions,
-            net_salary=data.net_salary,
+            net_salary=net_salary,
         )
         salary = await self.repo.create(salary)
         # Nạp lại kèm relationship để tránh lazy-load trong async context
@@ -86,6 +94,9 @@ class PayrollService:
         update_data = data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(salary, field, value)
+
+        # Always recalculate net_salary = base + bonus - deductions
+        salary.net_salary = salary.base_salary + salary.bonus - salary.deductions
 
         await self.repo.update(salary)
         salary = await self.repo.get_by_id(salary_id)

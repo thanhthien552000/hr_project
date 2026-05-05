@@ -75,13 +75,25 @@ class EmployeeRepository:
     async def create(self, employee: Employee) -> Employee:
         self.db.add(employee)
         await self.db.flush()
-        await self.db.refresh(employee)
-        return employee
+        # Re-fetch with eager loading to avoid lazy load in async context
+        query = (
+            select(Employee)
+            .where(Employee.id == employee.id)
+            .options(selectinload(Employee.department), selectinload(Employee.position))
+        )
+        result = await self.db.execute(query)
+        return result.scalar_one()
 
     async def update(self, employee: Employee) -> Employee:
         await self.db.flush()
-        await self.db.refresh(employee)
-        return employee
+        # Re-fetch with eager loading to avoid lazy load in async context
+        query = (
+            select(Employee)
+            .where(Employee.id == employee.id)
+            .options(selectinload(Employee.department), selectinload(Employee.position))
+        )
+        result = await self.db.execute(query)
+        return result.scalar_one()
 
     async def soft_delete(self, employee: Employee) -> Employee:
         employee.is_deleted = True

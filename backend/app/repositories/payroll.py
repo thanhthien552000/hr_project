@@ -125,6 +125,12 @@ class PayrollRepository:
                     changes.append(row)
         return changes
 
+    async def get_latest_month(self) -> Optional[date]:
+        """Get the latest salary_month that has data."""
+        query = select(func.max(Salary.salary_month))
+        result = await self.db.execute(query)
+        return result.scalar()
+
     async def get_recent_salaries(self, limit: int = 10) -> List[Salary]:
         query = (
             select(Salary)

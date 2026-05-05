@@ -46,10 +46,7 @@ const COLORS = [
 ];
 const itemsPerPage = 5;
 
-const renderPayrollLabel = ({ name, percentage }) => {
-  if (!percentage || percentage < 6) return "";
-  return `${name} ${formatPercent(percentage)}`;
-};
+const renderPayrollLabel = () => null;
 
 const Dashboard = () => {
   const [month, setMonth] = useState(currentMonthValue());
@@ -262,17 +259,17 @@ const Dashboard = () => {
           {pieData.length > 0 ? (
             <div className="payroll-department-layout">
               <div className="payroll-pie-wrap">
-                <ResponsiveContainer width="100%" height={280}>
+                <ResponsiveContainer width="100%" height={240}>
                   <PieChart>
                     <Pie
                       data={pieData}
                       dataKey="value"
                       nameKey="name"
-                      innerRadius={58}
-                      outerRadius={86}
-                      paddingAngle={pieData.length > 1 ? 3 : 0}
-                      label={renderPayrollLabel}
-                      labelLine={pieData.length > 1}
+                      innerRadius={70}
+                      outerRadius={100}
+                      paddingAngle={pieData.length > 1 ? 2 : 0}
+                      label={false}
+                      labelLine={false}
                     >
                       {pieData.map((item, index) => (
                         <Cell
@@ -287,15 +284,10 @@ const Dashboard = () => {
                         `${item.payload.name} (${formatPercent(item.payload.percentage)})`,
                       ]}
                     />
-                    <Legend
-                      layout="horizontal"
-                      verticalAlign="bottom"
-                      align="center"
-                    />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="payroll-pie-center">
-                  <span>Total</span>
+                  <span>TOTAL</span>
                   <strong>
                     {formatCurrency(payrollByDepartment?.total_payroll)}
                   </strong>

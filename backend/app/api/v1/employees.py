@@ -46,6 +46,8 @@ async def export_employees_pdf(
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
 
+    import os
+
     service = EmployeeService(db)
     items, _ = await service.get_list(
         offset=0, limit=10000,
@@ -54,12 +56,31 @@ async def export_employees_pdf(
 
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4))
+
+    # Register Vietnamese-compatible font
+    font_path = "C:/Windows/Fonts/arial.ttf"
+    font_bold_path = "C:/Windows/Fonts/arialbd.ttf"
+    if os.path.exists(font_path):
+        pdfmetrics.registerFont(TTFont("ArialUnicode", font_path))
+        if os.path.exists(font_bold_path):
+            pdfmetrics.registerFont(TTFont("ArialUnicode-Bold", font_bold_path))
+        else:
+            pdfmetrics.registerFont(TTFont("ArialUnicode-Bold", font_path))
+    else:
+        pdfmetrics.registerFont(TTFont("ArialUnicode", "DejaVuSans.ttf"))
+        pdfmetrics.registerFont(TTFont("ArialUnicode-Bold", "DejaVuSans-Bold.ttf"))
+
     styles = getSampleStyleSheet()
+    styles["Title"].fontName = "ArialUnicode-Bold"
+    styles["Normal"].fontName = "ArialUnicode"
 
     elements = []
-    elements.append(Paragraph("Employee List", styles["Title"]))
+    elements.append(Paragraph("Danh sách nhân viên", styles["Title"]))
 
-    data = [["ID", "Full Name", "Department", "Position", "Status", "Email", "Phone"]]
+    from reportlab.platypus import Spacer
+    elements.append(Spacer(1, 12))
+
+    data = [["ID", "Họ tên", "Phòng ban", "Chức vụ", "Trạng thái", "Email", "SĐT"]]
     for emp in items:
         data.append([
             str(emp["id"]),
@@ -76,6 +97,8 @@ async def export_employees_pdf(
         ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("FONTNAME", (0, 0), (-1, 0), "ArialUnicode-Bold"),
+        ("FONTNAME", (0, 1), (-1, -1), "ArialUnicode"),
         ("FONTSIZE", (0, 0), (-1, 0), 10),
         ("FONTSIZE", (0, 1), (-1, -1), 8),
         ("BOTTOMPADDING", (0, 0), (-1, 0), 12),

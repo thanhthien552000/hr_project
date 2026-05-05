@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Edit2, Plus, X } from "lucide-react";
 import SearchEmployees from "../InputSearch/Search";
 import "./Payroll.css";
-import { payrollApi } from "../../../services/hrApi";
+import { payrollApi, employeesApi } from "../../../services/hrApi";
 import {
+  currentMonthValue,
   displayText,
   employeeCode,
   formatCurrency,
@@ -39,13 +40,30 @@ const normalizeSalaryPayload = (payload, isEdit) => {
   };
 };
 
-const SalaryFormModal = ({ salary, onClose, onSave, saving, error }) => {
-  const [formData, setFormData] = useState(() => buildSalaryForm(salary));
+const SalaryFormModal = ({ salary, onClose, onSave, saving, error, employees = [] }) => {
+  const [formData, setFormData] = useState(() => {
+    const initial = buildSalaryForm(salary);
+    // Default salary_month to current month for create
+    if (!initial.salary_month) {
+      initial.salary_month = currentMonthValue();
+    }
+    return initial;
+  });
   const isEdit = Boolean(salary);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((current) => ({ ...current, [name]: value }));
+    setFormData((current) => {
+      const updated = { ...current, [name]: value };
+      // Auto-calculate net_salary
+      if (["base_salary", "bonus", "deductions"].includes(name)) {
+        const base = Number(updated.base_salary) || 0;
+        const bonus = Number(updated.bonus) || 0;
+        const deductions = Number(updated.deductions) || 0;
+        updated.net_salary = base + bonus - deductions;
+      }
+      return updated;
+    });
   };
 
   const handleSubmit = (e) => {
@@ -68,19 +86,24 @@ const SalaryFormModal = ({ salary, onClose, onSave, saving, error }) => {
 
             <div className="form-row">
               <div className="form-group">
-                <label>Employee ID</label>
-                <input
-                  type="number"
-                  min="1"
+                <label>Nhân viên</label>
+                <select
                   name="employee_id"
                   value={formData.employee_id}
                   onChange={handleChange}
                   disabled={isEdit}
                   required={!isEdit}
-                />
+                >
+                  <option value="">-- Chọn nhân viên --</option>
+                  {employees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {employeeCode(emp.id)} - {emp.full_name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
-                <label>Salary month</label>
+                <label>Tháng lương</label>
                 <input
                   type="month"
                   name="salary_month"
@@ -105,14 +128,14 @@ const SalaryFormModal = ({ salary, onClose, onSave, saving, error }) => {
                 />
               </div>
               <div className="form-group">
-                <label>Net salary</label>
+                <label>Net salary (auto)</label>
                 <input
                   type="number"
                   min="0"
                   name="net_salary"
                   value={formData.net_salary}
-                  onChange={handleChange}
-                  required
+                  readOnly
+                  className="readonly-input"
                 />
               </div>
             </div>
@@ -161,13 +184,14 @@ const SalaryFormModal = ({ salary, onClose, onSave, saving, error }) => {
 
 const Payroll = () => {
   const [rows, setRows] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
     total_pages: 1,
   });
   const [searchTerm, setSearchTerm] = useState("");
-  const [monthFilter, setMonthFilter] = useState("");
+  const [monthFilter, setMonthFilter] = useState(currentMonthValue());
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -176,6 +200,14 @@ const Payroll = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    employeesApi.list({ page: 1, page_size: 100 }).then((data) => {
+      setEmployees(data?.items || data || []);
+    }).catch((err) => {
+      console.error("Failed to load employees for payroll:", err);
+    });
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -392,6 +424,7 @@ const Payroll = () => {
           onSave={handleSaveSalary}
           saving={saving}
           error={formError}
+          employees={employees}
         />
       )}
     </div>
