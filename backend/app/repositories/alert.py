@@ -1,5 +1,5 @@
-from typing import Optional, List
-from sqlalchemy import select, func
+from typing import Optional, List, Set, Tuple
+from sqlalchemy import select, func, extract
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.alert import Alert
@@ -45,6 +45,16 @@ class AlertRepository:
         self.db.add_all(alerts)
         await self.db.flush()
         return alerts
+
+    async def get_existing_keys_for_month(self, year: int, month: int) -> Set[Tuple[int, str]]:
+        """Trả về set (employee_id, alert_type) đã tồn tại trong tháng đó."""
+        query = (
+            select(Alert.employee_id, Alert.alert_type)
+            .where(extract("year", Alert.created_at) == year)
+            .where(extract("month", Alert.created_at) == month)
+        )
+        result = await self.db.execute(query)
+        return {(row.employee_id, row.alert_type) for row in result.all()}
 
     async def get_employee_name(self, employee_id: int) -> Optional[str]:
         query = select(Employee.full_name).where(Employee.id == employee_id)

@@ -102,11 +102,17 @@ class AlertService:
                 )
                 alerts_created.append(alert)
 
-        # Insert tất cả cảnh báo bằng 1 batch (hiệu quả hơn insert từng cái)
-        if alerts_created:
-            await self.repo.create_batch(alerts_created)
+        # Lọc trùng: bỏ qua alert đã tồn tại trong tháng này
+        existing_keys = await self.repo.get_existing_keys_for_month(current.year, current.month)
+        alerts_to_insert = [
+            a for a in alerts_created
+            if (a.employee_id, a.alert_type) not in existing_keys
+        ]
+
+        if alerts_to_insert:
+            await self.repo.create_batch(alerts_to_insert)
 
         return {
-            "alerts_generated": len(alerts_created),
+            "alerts_generated": len(alerts_to_insert),
             "month": str(current)[:7],
         }
