@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Edit2, Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Edit2, Plus, X, CalendarDays } from "lucide-react";
 import SearchEmployees from "../InputSearch/Search";
 import "./Attendance.css";
-import { attendanceApi } from "../../../services/hrApi";
+import { attendanceApi, employeesApi } from "../../../services/hrApi";
 import { displayText, employeeCode, toOptionalNumber } from "../../../utils/formatters";
 
 const pageSize = 10;
@@ -35,7 +35,16 @@ const normalizeAttendancePayload = (payload, isEdit) => {
 
 const AttendanceFormModal = ({ record, onClose, onSave, saving, error }) => {
   const [formData, setFormData] = useState(() => buildAttendanceForm(record));
+  const [employees, setEmployees] = useState([]);
   const isEdit = Boolean(record);
+
+  useEffect(() => {
+    if (!isEdit) {
+      employeesApi.list({ page_size: 100 }).then((res) => {
+        setEmployees(res.items || []);
+      }).catch(() => {});
+    }
+  }, [isEdit]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -62,27 +71,42 @@ const AttendanceFormModal = ({ record, onClose, onSave, saving, error }) => {
 
             <div className="form-row">
               <div className="form-group">
-                <label>Employee ID</label>
-                <input
-                  type="number"
-                  min="1"
-                  name="employee_id"
-                  value={formData.employee_id}
-                  onChange={handleChange}
-                  disabled={isEdit}
-                  required={!isEdit}
-                />
+                <label>Employee</label>
+                {isEdit ? (
+                  <input
+                    type="text"
+                    value={formData.employee_id}
+                    disabled
+                  />
+                ) : (
+                  <select
+                    name="employee_id"
+                    value={formData.employee_id}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">-- Select employee --</option>
+                    {employees.map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.full_name} ({employeeCode(emp.id)})
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
               <div className="form-group">
                 <label>Attendance month</label>
-                <input
-                  type="month"
-                  name="attendance_month"
-                  value={formData.attendance_month}
-                  onChange={handleChange}
-                  disabled={isEdit}
-                  required={!isEdit}
-                />
+                <div className="month-input-wrapper">
+                  <CalendarDays size={18} className="month-icon" />
+                  <input
+                    type="month"
+                    name="attendance_month"
+                    value={formData.attendance_month}
+                    onChange={handleChange}
+                    disabled={isEdit}
+                    required={!isEdit}
+                  />
+                </div>
               </div>
             </div>
 

@@ -93,3 +93,52 @@
   border-radius: 6px;
   font-size: 12px;
 }
+
+/* ===== FORM SELECT ===== */
+.modal-content select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+  color: #333;
+  appearance: auto;
+  cursor: pointer;
+}
+
+.modal-content select:focus {
+  border-color: #2a9d8f;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(42, 157, 143, 0.15);
+}
+
+/* ===== MONTH INPUT WITH ICON ===== */
+.month-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.month-input-wrapper .month-icon {
+  position: absolute;
+  left: 12px;
+  color: #2a9d8f;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.month-input-wrapper input[type="month"] {
+  width: 100%;
+  padding: 10px 12px 10px 38px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #333;
+}
+
+.month-input-wrapper input[type="month"]:focus {
+  border-color: #2a9d8f;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(42, 157, 143, 0.15);
+}

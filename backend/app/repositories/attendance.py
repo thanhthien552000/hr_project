@@ -59,13 +59,12 @@ class AttendanceRepository:
     async def create(self, attendance: Attendance) -> Attendance:
         self.db.add(attendance)
         await self.db.flush()
-        await self.db.refresh(attendance)
-        return attendance
+        # Re-query with employee relationship loaded
+        return await self.get_by_id(attendance.id)
 
     async def update(self, attendance: Attendance) -> Attendance:
         await self.db.flush()
-        await self.db.refresh(attendance)
-        return attendance
+        return await self.get_by_id(attendance.id)
 
     async def get_top_absent(self, month_date: date, limit: int = 5) -> List:
         query = (
