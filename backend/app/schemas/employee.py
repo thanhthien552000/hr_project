@@ -2,7 +2,7 @@ import re
 import unicodedata
 from datetime import datetime, date
 from typing import Optional
-from pydantic import BaseModel, EmailStr, field_validator, model_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 VALID_STATUSES = ["Đang làm việc", "Nghỉ việc", "Nghỉ phép", "Thử việc", "Thực tập"]
 VALID_GENDERS = ["Nam", "Nữ"]
@@ -60,11 +60,17 @@ def _validate_date_str(v: str, field_label: str) -> str:
     return v
 
 
-def _validate_gmail_email(v: Optional[EmailStr]) -> Optional[EmailStr]:
+EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+
+
+def _validate_email(v: Optional[str]) -> Optional[str]:
     if v is None:
         return v
-    if not str(v).strip().lower().endswith("@gmail.com"):
-        raise ValueError("Email phải dùng đuôi @gmail.com")
+    v = v.strip()
+    if not v:
+        return None
+    if not EMAIL_REGEX.match(v):
+        raise ValueError("Email không đúng định dạng (VD: abc@company.com)")
     return v
 
 
@@ -73,7 +79,7 @@ class EmployeeBase(BaseModel):
     date_of_birth: str
     gender: Optional[str] = None
     phone_number: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
     hire_date: str
     department_id: Optional[int] = None
     position_id: Optional[int] = None
@@ -126,7 +132,7 @@ class EmployeeBase(BaseModel):
     @field_validator("email")
     @classmethod
     def validate_email(cls, v):
-        return _validate_gmail_email(v)
+        return _validate_email(v)
 
     @field_validator("gender")
     @classmethod
@@ -160,7 +166,7 @@ class EmployeeUpdate(BaseModel):
     date_of_birth: Optional[str] = None
     gender: Optional[str] = None
     phone_number: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
     hire_date: Optional[str] = None
     department_id: Optional[int] = None
     position_id: Optional[int] = None
@@ -219,7 +225,7 @@ class EmployeeUpdate(BaseModel):
     @field_validator("email")
     @classmethod
     def validate_email(cls, v):
-        return _validate_gmail_email(v)
+        return _validate_email(v)
 
     @field_validator("gender")
     @classmethod
