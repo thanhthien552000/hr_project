@@ -1,3 +1,4 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 from typing import List
 import json
@@ -10,9 +11,13 @@ class Settings(BaseSettings):
     Nếu không tìm thấy → dùng giá trị mặc định bên dưới.
     """
 
-    # Database
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/hr_db"
-    DATABASE_URL_SYNC: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/hr_db"
+    # Human Database (SQL Server - Docker)
+    HUMAN_DATABASE_URL: str = "mssql+aioodbc://sa:YourPassword123!@localhost:1433/HumanDB?driver=ODBC+Driver+17+for+SQL+Server&TrustServerCertificate=yes"
+    HUMAN_DATABASE_URL_SYNC: str = "mssql+pyodbc://sa:YourPassword123!@localhost:1433/HumanDB?driver=ODBC+Driver+17+for+SQL+Server&TrustServerCertificate=yes"
+
+    # Payroll Database (MySQL - Docker)
+    PAYROLL_DATABASE_URL: str = "mysql+aiomysql://root:root@localhost:3306/payroll_db?charset=utf8mb4"
+    PAYROLL_DATABASE_URL_SYNC: str = "mysql+pymysql://root:root@localhost:3306/payroll_db?charset=utf8mb4"
 
     # JWT 
     SECRET_KEY: str = "change-this-to-a-random-secret-key-in-production"
@@ -30,6 +35,17 @@ class Settings(BaseSettings):
     # Alert thresholds
     ALERT_ABSENCE_THRESHOLD: int = 5
     ALERT_SALARY_CHANGE_THRESHOLD: int = 20
+
+    @field_validator("DEBUG", mode="before")
+    @classmethod
+    def parse_debug(cls, value):
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"release", "prod", "production"}:
+                return False
+            if normalized in {"debug", "dev", "development"}:
+                return True
+        return value
 
     @property
     def cors_origins_list(self) -> List[str]:

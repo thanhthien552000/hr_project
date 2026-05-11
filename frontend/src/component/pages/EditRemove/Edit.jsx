@@ -1,15 +1,19 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { toOptionalNumber } from "../../../utils/formatters";
+import {
+  EMPLOYEE_STATUSES,
+  normalizeEmployeeStatus,
+} from "../../../utils/employeeStatus";
+import {
+  hasErrors,
+  normalizePhoneNumber,
+  validateEmployeeForm,
+  visibleErrors,
+} from "../../../utils/validators";
 import "./Edit.css";
 
-const STATUS_OPTIONS = [
-  "Đang làm việc",
-  "Nghỉ việc",
-  "Nghỉ phép",
-  "Thử việc",
-  "Thực tập",
-];
+const STATUS_OPTIONS = EMPLOYEE_STATUSES;
 
 const buildFormState = (employee) => ({
   full_name: employee?.full_name || "",
@@ -20,7 +24,7 @@ const buildFormState = (employee) => ({
   hire_date: employee?.hire_date || "",
   department_id: employee?.department_id || "",
   position_id: employee?.position_id || "",
-  status: employee?.status || "Đang làm việc",
+  status: normalizeEmployeeStatus(employee?.status),
 });
 
 const EditEmployeeModal = ({
@@ -34,10 +38,17 @@ const EditEmployeeModal = ({
   positions = [],
 }) => {
   const [formData, setFormData] = useState(() => buildFormState(employee));
-
-  useEffect(() => {
-    setFormData(buildFormState(employee));
-  }, [employee]);
+  const [touchedFields, setTouchedFields] = useState({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const validationErrors = useMemo(
+    () => validateEmployeeForm(formData),
+    [formData]
+  );
+  const fieldErrors = useMemo(
+    () => visibleErrors(validationErrors, touchedFields, submitAttempted),
+    [submitAttempted, touchedFields, validationErrors]
+  );
+  const isSubmitDisabled = saving || hasErrors(validationErrors);
 
   if (!isOpen || !employee) return null;
 
@@ -46,12 +57,23 @@ const EditEmployeeModal = ({
     setFormData((current) => ({ ...current, [name]: value }));
   };
 
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouchedFields((current) => ({ ...current, [name]: true }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    setSubmitAttempted(true);
+    if (hasErrors(validationErrors)) return;
     onSave(employee.id, {
       ...formData,
+      full_name: formData.full_name.trim(),
+      phone_number: normalizePhoneNumber(formData.phone_number),
+      email: formData.email?.trim() || "",
       department_id: toOptionalNumber(formData.department_id),
       position_id: toOptionalNumber(formData.position_id),
+      status: normalizeEmployeeStatus(formData.status),
     });
   };
 
@@ -65,7 +87,7 @@ const EditEmployeeModal = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div className="modal-body">
             {error && <div className="form-error">{error}</div>}
 
@@ -75,8 +97,11 @@ const EditEmployeeModal = ({
                 name="full_name"
                 value={formData.full_name}
                 onChange={handleChange}
+                onBlur={handleBlur}
+                className={fieldErrors.full_name ? "input-error" : ""}
                 required
               />
+              {fieldErrors.full_name && <span className="field-error">{fieldErrors.full_name}</span>}
             </div>
 
             <div className="form-row">
@@ -87,8 +112,11 @@ const EditEmployeeModal = ({
                   name="date_of_birth"
                   value={formData.date_of_birth}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={fieldErrors.date_of_birth ? "input-error" : ""}
                   required
                 />
+                {fieldErrors.date_of_birth && <span className="field-error">{fieldErrors.date_of_birth}</span>}
               </div>
               <div className="form-group">
                 <label>Giới tính</label>
@@ -96,6 +124,7 @@ const EditEmployeeModal = ({
                   name="gender"
                   value={formData.gender}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                 >
                   <option value="Nam">Nam</option>
                   <option value="Nữ">Nữ</option>
@@ -110,8 +139,11 @@ const EditEmployeeModal = ({
                 name="hire_date"
                 value={formData.hire_date}
                 onChange={handleChange}
+                onBlur={handleBlur}
+                className={fieldErrors.hire_date ? "input-error" : ""}
                 required
               />
+              {fieldErrors.hire_date && <span className="field-error">{fieldErrors.hire_date}</span>}
             </div>
 
             <div className="form-row">
@@ -121,6 +153,7 @@ const EditEmployeeModal = ({
                   name="department_id"
                   value={formData.department_id}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                 >
                   <option value="">Chưa chọn</option>
                   {departments.map((department) => (
@@ -136,6 +169,7 @@ const EditEmployeeModal = ({
                   name="position_id"
                   value={formData.position_id}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                 >
                   <option value="">Chưa chọn</option>
                   {positions.map((position) => (
@@ -153,7 +187,10 @@ const EditEmployeeModal = ({
                 name="phone_number"
                 value={formData.phone_number}
                 onChange={handleChange}
+                onBlur={handleBlur}
+                className={fieldErrors.phone_number ? "input-error" : ""}
               />
+              {fieldErrors.phone_number && <span className="field-error">{fieldErrors.phone_number}</span>}
             </div>
 
             <div className="form-group">
@@ -161,9 +198,13 @@ const EditEmployeeModal = ({
               <input
                 type="email"
                 name="email"
+                placeholder="email@gmail.com"
                 value={formData.email}
                 onChange={handleChange}
+                onBlur={handleBlur}
+                className={fieldErrors.email ? "input-error" : ""}
               />
+              {fieldErrors.email && <span className="field-error">{fieldErrors.email}</span>}
             </div>
 
             <div className="form-group">
@@ -172,6 +213,7 @@ const EditEmployeeModal = ({
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
+                onBlur={handleBlur}
               >
                 {STATUS_OPTIONS.map((status) => (
                   <option key={status} value={status}>
@@ -191,7 +233,7 @@ const EditEmployeeModal = ({
             >
               Thoát
             </button>
-            <button type="submit" className="btn-save" disabled={saving}>
+            <button type="submit" className="btn-save" disabled={isSubmitDisabled}>
               {saving ? "Đang lưu..." : "Lưu thay đổi"}
             </button>
           </div>

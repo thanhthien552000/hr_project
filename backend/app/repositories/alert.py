@@ -3,7 +3,6 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.alert import Alert
-from app.models.employee import Employee
 
 
 class AlertRepository:
@@ -51,8 +50,3 @@ class AlertRepository:
         query = select(Alert.employee_id, Alert.alert_type, Alert.message)
         result = await self.db.execute(query)
         return {(row.employee_id, row.alert_type, row.message) for row in result.all()}
-
-    async def get_employee_name(self, employee_id: int) -> Optional[str]:
-        query = select(Employee.full_name).where(Employee.id == employee_id)
-        result = await self.db.execute(query)
-        return result.scalar_one_or_none()

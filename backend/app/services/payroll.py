@@ -7,15 +7,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.salary import Salary
 from app.repositories.payroll import PayrollRepository
+from app.repositories.employee import EmployeeRepository
 from app.schemas.payroll import SalaryCreate, SalaryUpdate
 from app.common.exceptions import NotFoundException
 
 
 class PayrollService:
-    """Xử lý nghiệp vụ bảng lương."""
+    """Xử lý nghiệp vụ bảng lương — cross-DB: Payroll (MySQL) + Human (SQL Server)."""
 
-    def __init__(self, db: AsyncSession):
-        self.repo = PayrollRepository(db)
+    def __init__(self, payroll_db: AsyncSession, human_db: AsyncSession):
+        self.repo = PayrollRepository(payroll_db)
+        self.employee_repo = EmployeeRepository(human_db)
 
     # =============================================
     # 1. DANH SÁCH LƯƠNG — kèm so sánh với tháng trước
@@ -33,16 +35,37 @@ class PayrollService:
             if latest:
                 month = latest.strftime("%Y-%m")
 
+        # If filtering by department, get employee_ids in that dept from Human DB
+        employee_ids_in_dept = None
+        if department_id:
+            from sqlalchemy import select
+            from app.models.employee import Employee
+            result = await self.employee_repo.db.execute(
+                select(Employee.id).where(
+                    Employee.department_id == department_id,
+                    Employee.is_deleted == False,
+                )
+            )
+            employee_ids_in_dept = [row[0] for row in result.all()]
+            if not employee_ids_in_dept:
+                return [], 0
+
         salaries, total = await self.repo.get_list(
-            offset=offset, limit=limit, month=month, department_id=department_id,
+            offset=offset, limit=limit, month=month,
+            employee_ids_in_dept=employee_ids_in_dept,
         )
+
+        # Batch lookup employee info from Human DB
+        emp_ids = {s.employee_id for s in salaries}
+        emp_map = await self.employee_repo.get_employee_info_map(emp_ids)
+
         items = []
         for s in salaries:
-            item = self._to_response(s)
-            # Tính tháng trước: relativedelta giúp trừ tháng đúng (vd: 03-01 → 02-01)
+            emp_info = emp_map.get(s.employee_id, {})
+            item = self._to_response(s, emp_info)
+            # Tính tháng trước
             current_month = s.salary_month
             prev_month = current_month - relativedelta(months=1)
-            # Lấy lương tháng trước cùng nhân viên
             prev_salary = await self.repo.get_by_employee_month(s.employee_id, prev_month)
             if prev_salary:
                 item["previous_month"] = {
@@ -52,7 +75,6 @@ class PayrollService:
                     "deductions": float(prev_salary.deductions),
                     "net_salary": float(prev_salary.net_salary),
                 }
-                # Tính % thay đổi
                 if prev_salary.net_salary > 0:
                     change = float((s.net_salary - prev_salary.net_salary) / prev_salary.net_salary * 100)
                     item["change_percentage"] = round(abs(change), 2)
@@ -65,12 +87,13 @@ class PayrollService:
         salary = await self.repo.get_by_id(salary_id)
         if not salary:
             raise NotFoundException("Salary", salary_id)
-        return self._to_response(salary)
+        emp_map = await self.employee_repo.get_employee_info_map({salary.employee_id})
+        emp_info = emp_map.get(salary.employee_id, {})
+        return self._to_response(salary, emp_info)
 
     # 3. Tạo bản ghi lương
     async def create(self, data: SalaryCreate) -> dict:
         month_date = date.fromisoformat(f"{data.salary_month}-01")
-        # Always calculate net_salary = base + bonus - deductions
         net_salary = data.base_salary + data.bonus - data.deductions
         salary = Salary(
             employee_id=data.employee_id,
@@ -81,9 +104,9 @@ class PayrollService:
             net_salary=net_salary,
         )
         salary = await self.repo.create(salary)
-        # Nạp lại kèm relationship để tránh lazy-load trong async context
-        salary = await self.repo.get_by_id(salary.id)
-        return self._to_response(salary)
+        emp_map = await self.employee_repo.get_employee_info_map({salary.employee_id})
+        emp_info = emp_map.get(salary.employee_id, {})
+        return self._to_response(salary, emp_info)
 
     # 4. Cập nhật lương
     async def update(self, salary_id: int, data: SalaryUpdate) -> dict:
@@ -95,50 +118,71 @@ class PayrollService:
         for field, value in update_data.items():
             setattr(salary, field, value)
 
-        # Always recalculate net_salary = base + bonus - deductions
         salary.net_salary = salary.base_salary + salary.bonus - salary.deductions
-
         await self.repo.update(salary)
+
         salary = await self.repo.get_by_id(salary_id)
-        return self._to_response(salary)
+        emp_map = await self.employee_repo.get_employee_info_map({salary.employee_id})
+        emp_info = emp_map.get(salary.employee_id, {})
+        return self._to_response(salary, emp_info)
 
     # =============================================
-    # 5. THỐNG KÊ LƯƠNG THEO PHÒNG BAN
+    # 5. THỐNG KÊ LƯƠNG THEO PHÒNG BAN (cross-DB)
     # =============================================
     async def get_statistics(self, month: str) -> List[dict]:
         month_date = date.fromisoformat(f"{month}-01")
-        stats = await self.repo.get_statistics_by_department(month_date)
-        # Convert Decimal → float để JSON encode được
-        return [
-            {
-                "department_id": row.department_id,
-                "department_name": row.department_name,
-                "employee_count": row.employee_count,
-                "total_salary": float(row.total_salary or 0),
-                "avg_salary": float(row.avg_salary or 0),
-                "min_salary": float(row.min_salary or 0),
-                "max_salary": float(row.max_salary or 0),
-            }
-            for row in stats
-        ]
+        salaries = await self.repo.get_salaries_by_month(month_date)
+
+        if not salaries:
+            return []
+
+        # Get employee info from Human DB
+        emp_ids = {s.employee_id for s in salaries}
+        emp_map = await self.employee_repo.get_employee_info_map(emp_ids)
+
+        # Group by department in Python
+        dept_stats = {}
+        for s in salaries:
+            emp_info = emp_map.get(s.employee_id, {})
+            if emp_info.get("is_deleted", False):
+                continue
+            dept_id = emp_info.get("department_id", 0)
+            dept_name = emp_info.get("department_name", "Unknown")
+
+            if dept_id not in dept_stats:
+                dept_stats[dept_id] = {
+                    "department_id": dept_id,
+                    "department_name": dept_name,
+                    "salaries": [],
+                }
+            dept_stats[dept_id]["salaries"].append(float(s.net_salary))
+
+        result = []
+        for dept in sorted(dept_stats.values(), key=lambda x: x["department_name"]):
+            sals = dept["salaries"]
+            result.append({
+                "department_id": dept["department_id"],
+                "department_name": dept["department_name"],
+                "employee_count": len(sals),
+                "total_salary": sum(sals),
+                "avg_salary": round(sum(sals) / len(sals), 2) if sals else 0,
+                "min_salary": min(sals) if sals else 0,
+                "max_salary": max(sals) if sals else 0,
+            })
+        return result
 
     # =============================================
     # HELPER: convert Salary model → dict
     # =============================================
-    def _to_response(self, salary: Salary) -> dict:
-        # Trả về cấu trúc bao gồm cả "current_month" + chỗ trống cho "previous_month"
-        # → để get_list có thể fill thêm previous_month
-        result = {
+    def _to_response(self, salary: Salary, emp_info: dict = None) -> dict:
+        emp_info = emp_info or {}
+        return {
             "id": salary.id,
             "salary_id": salary.id,
             "employee_id": salary.employee_id,
-            "employee_name": salary.employee.full_name if salary.employee else None,
-            "full_name": salary.employee.full_name if salary.employee else None,
-            "department_name": (
-                salary.employee.department.department_name
-                if salary.employee and salary.employee.department
-                else None
-            ),
+            "employee_name": emp_info.get("full_name"),
+            "full_name": emp_info.get("full_name"),
+            "department_name": emp_info.get("department_name"),
             "salary_month": str(salary.salary_month)[:7],
             "base_salary": salary.base_salary,
             "bonus": salary.bonus,
@@ -151,10 +195,9 @@ class PayrollService:
                 "deductions": float(salary.deductions),
                 "net_salary": float(salary.net_salary),
             },
-            "previous_month": None,        # sẽ fill ở get_list nếu có
+            "previous_month": None,
             "change_percentage": None,
             "change_direction": None,
             "created_at": salary.created_at,
             "updated_at": salary.updated_at,
         }
-        return result

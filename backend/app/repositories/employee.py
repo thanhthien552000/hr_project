@@ -1,4 +1,4 @@
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict, Set
 from datetime import date
 from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,31 @@ from app.models.position import Position
 class EmployeeRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    # ── Cross-DB helper: bulk lookup employee info ────────────────────
+    async def get_employee_info_map(self, employee_ids: Set[int]) -> Dict[int, dict]:
+        """Return {emp_id: {full_name, department_id, department_name, position_name}} for given IDs.
+        Used by Payroll/Attendance/Alert services to enrich cross-DB data."""
+        if not employee_ids:
+            return {}
+        query = (
+            select(Employee)
+            .where(Employee.id.in_(employee_ids))
+            .options(selectinload(Employee.department), selectinload(Employee.position))
+        )
+        result = await self.db.execute(query)
+        employees = result.scalars().all()
+        return {
+            e.id: {
+                "full_name": e.full_name,
+                "department_id": e.department_id,
+                "department_name": e.department.department_name if e.department else None,
+                "position_name": e.position.position_name if e.position else None,
+                "status": e.status,
+                "is_deleted": e.is_deleted,
+            }
+            for e in employees
+        }
 
     async def get_list(
         self,

@@ -10,14 +10,14 @@ import {
   positionsApi,
 } from "../../../services/hrApi";
 import { displayText, employeeCode } from "../../../utils/formatters";
+import {
+  EMPLOYEE_STATUSES,
+  normalizeEmployeeStatus,
+} from "../../../utils/employeeStatus";
 
 const STATUS_OPTIONS = [
   { value: "", label: "All statuses" },
-  { value: "Đang làm việc", label: "Đang làm việc" },
-  { value: "Nghỉ việc", label: "Nghỉ việc" },
-  { value: "Nghỉ phép", label: "Nghỉ phép" },
-  { value: "Thử việc", label: "Thử việc" },
-  { value: "Thực tập", label: "Thực tập" },
+  ...EMPLOYEE_STATUSES.map((status) => ({ value: status, label: status })),
 ];
 
 const normalizeEmployeePayload = (payload) => ({
@@ -27,7 +27,7 @@ const normalizeEmployeePayload = (payload) => ({
   email: payload.email || null,
   department_id: payload.department_id || null,
   position_id: payload.position_id || null,
-  status: payload.status || null,
+  status: normalizeEmployeeStatus(payload.status, null),
 });
 
 const getStatusClass = (status = "") => {
@@ -299,6 +299,8 @@ const Employees = () => {
               <tr>
                 <th>Name</th>
                 <th>ID</th>
+                <th>Phone</th>
+                <th>Email</th>
                 <th>Department</th>
                 <th>Position</th>
                 <th>Status</th>
@@ -308,7 +310,7 @@ const Employees = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="table-state">
+                  <td colSpan="8" className="table-state">
                     Loading employees...
                   </td>
                 </tr>
@@ -317,6 +319,22 @@ const Employees = () => {
                   <tr key={emp.id}>
                     <td className="fw-medium">{emp.full_name}</td>
                     <td>{employeeCode(emp.id)}</td>
+                    <td className="contact-cell">
+                      {emp.phone_number ? (
+                        <a href={`tel:${emp.phone_number}`}>
+                          {emp.phone_number}
+                        </a>
+                      ) : (
+                        displayText(emp.phone_number)
+                      )}
+                    </td>
+                    <td className="contact-cell">
+                      {emp.email ? (
+                        <a href={`mailto:${emp.email}`}>{emp.email}</a>
+                      ) : (
+                        displayText(emp.email)
+                      )}
+                    </td>
                     <td>{displayText(emp.department_name)}</td>
                     <td>{displayText(emp.position_name)}</td>
                     <td>
@@ -348,7 +366,7 @@ const Employees = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="table-state">
+                  <td colSpan="8" className="table-state">
                     No employees found.
                   </td>
                 </tr>

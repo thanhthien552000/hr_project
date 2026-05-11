@@ -111,8 +111,13 @@
   ring: 2px rgba(16, 185, 129, 0.2);
 }
 
+.table-wrapper {
+  overflow-x: auto;
+}
+
 .custom-table {
   width: 100%;
+  min-width: 1120px;
   border-collapse: collapse;
   text-align: left;
 }
@@ -142,6 +147,21 @@
 .fw-medium {
   font-weight: 600;
   color: #111827;
+}
+
+.contact-cell {
+  color: #4b5563;
+  white-space: nowrap;
+}
+
+.contact-cell a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.contact-cell a:hover {
+  color: #009688;
+  text-decoration: underline;
 }
 
 .badge {

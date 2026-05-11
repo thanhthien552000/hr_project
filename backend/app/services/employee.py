@@ -10,11 +10,10 @@ from app.common.exceptions import NotFoundException, AlreadyExistsException
 
 
 class EmployeeService:
-    """Xử lý nghiệp vụ liên quan đến nhân viên."""
+    """Xử lý nghiệp vụ liên quan đến nhân viên — chỉ dùng Human DB."""
 
-    def __init__(self, db: AsyncSession):
-        # Tạo Repository — Service không dùng db trực tiếp, chỉ dùng qua repo
-        self.repo = EmployeeRepository(db)
+    def __init__(self, human_db: AsyncSession):
+        self.repo = EmployeeRepository(human_db)
 
     # =============================================
     # 1. LẤY DANH SÁCH (chuyển model → dict response)

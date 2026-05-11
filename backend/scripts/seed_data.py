@@ -1,5 +1,5 @@
 """
-Seed script — import initial data from the original SQL databases into PostgreSQL.
+Seed script — import initial data into MySQL.
 Run: python scripts/seed_data.py
 """
 import asyncio

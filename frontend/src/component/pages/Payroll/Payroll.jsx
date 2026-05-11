@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Edit2, Plus, X } from "lucide-react";
 import SearchEmployees from "../InputSearch/Search";
 import "./Payroll.css";
@@ -11,16 +11,23 @@ import {
   formatPercent,
   toOptionalNumber,
 } from "../../../utils/formatters";
+import {
+  calculateNetSalary,
+  hasErrors,
+  validatePayrollForm,
+  validatePayrollWarnings,
+  visibleErrors,
+} from "../../../utils/validators";
 
 const pageSize = 10;
 
 const buildSalaryForm = (salary) => ({
   employee_id: salary?.employee_id || "",
   salary_month: salary?.salary_month || salary?.current_month?.salary_month || "",
-  base_salary: salary?.base_salary || salary?.current_month?.base_salary || "",
-  bonus: salary?.bonus || salary?.current_month?.bonus || 0,
-  deductions: salary?.deductions || salary?.current_month?.deductions || 0,
-  net_salary: salary?.net_salary || salary?.current_month?.net_salary || "",
+  base_salary: salary?.base_salary ?? salary?.current_month?.base_salary ?? "",
+  bonus: salary?.bonus ?? salary?.current_month?.bonus ?? 0,
+  deductions: salary?.deductions ?? salary?.current_month?.deductions ?? 0,
+  net_salary: salary?.net_salary ?? salary?.current_month?.net_salary ?? "",
 });
 
 const normalizeSalaryPayload = (payload, isEdit) => {
@@ -28,7 +35,7 @@ const normalizeSalaryPayload = (payload, isEdit) => {
     base_salary: Number(payload.base_salary),
     bonus: Number(payload.bonus || 0),
     deductions: Number(payload.deductions || 0),
-    net_salary: Number(payload.net_salary),
+    net_salary: calculateNetSalary(payload),
   };
 
   if (isEdit) return base;
@@ -47,9 +54,27 @@ const SalaryFormModal = ({ salary, onClose, onSave, saving, error, employees = [
     if (!initial.salary_month) {
       initial.salary_month = currentMonthValue();
     }
+    if (initial.net_salary === "" && initial.base_salary !== "") {
+      initial.net_salary = calculateNetSalary(initial);
+    }
     return initial;
   });
+  const [touchedFields, setTouchedFields] = useState({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const isEdit = Boolean(salary);
+  const validationErrors = useMemo(
+    () => validatePayrollForm(formData, isEdit),
+    [formData, isEdit]
+  );
+  const fieldErrors = useMemo(
+    () => visibleErrors(validationErrors, touchedFields, submitAttempted),
+    [submitAttempted, touchedFields, validationErrors]
+  );
+  const payrollWarnings = useMemo(
+    () => validatePayrollWarnings(formData),
+    [formData]
+  );
+  const isSubmitDisabled = saving || hasErrors(validationErrors);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -57,17 +82,21 @@ const SalaryFormModal = ({ salary, onClose, onSave, saving, error, employees = [
       const updated = { ...current, [name]: value };
       // Auto-calculate net_salary
       if (["base_salary", "bonus", "deductions"].includes(name)) {
-        const base = Number(updated.base_salary) || 0;
-        const bonus = Number(updated.bonus) || 0;
-        const deductions = Number(updated.deductions) || 0;
-        updated.net_salary = base + bonus - deductions;
+        updated.net_salary = calculateNetSalary(updated);
       }
       return updated;
     });
   };
 
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouchedFields((current) => ({ ...current, [name]: true }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    setSubmitAttempted(true);
+    if (hasErrors(validationErrors)) return;
     onSave(normalizeSalaryPayload(formData, isEdit));
   };
 
@@ -80,7 +109,7 @@ const SalaryFormModal = ({ salary, onClose, onSave, saving, error, employees = [
             <X size={20} />
           </button>
         </div>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div className="modal-body">
             {error && <div className="form-error">{error}</div>}
 
@@ -91,7 +120,9 @@ const SalaryFormModal = ({ salary, onClose, onSave, saving, error, employees = [
                   name="employee_id"
                   value={formData.employee_id}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   disabled={isEdit}
+                  className={fieldErrors.employee_id ? "input-error" : ""}
                   required={!isEdit}
                 >
                   <option value="">-- Chọn nhân viên --</option>
@@ -101,6 +132,7 @@ const SalaryFormModal = ({ salary, onClose, onSave, saving, error, employees = [
                     </option>
                   ))}
                 </select>
+                {fieldErrors.employee_id && <span className="field-error">{fieldErrors.employee_id}</span>}
               </div>
               <div className="form-group">
                 <label>Tháng lương</label>
@@ -109,9 +141,12 @@ const SalaryFormModal = ({ salary, onClose, onSave, saving, error, employees = [
                   name="salary_month"
                   value={formData.salary_month}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   disabled={isEdit}
+                  className={fieldErrors.salary_month ? "input-error" : ""}
                   required={!isEdit}
                 />
+                {fieldErrors.salary_month && <span className="field-error">{fieldErrors.salary_month}</span>}
               </div>
             </div>
 
@@ -124,19 +159,22 @@ const SalaryFormModal = ({ salary, onClose, onSave, saving, error, employees = [
                   name="base_salary"
                   value={formData.base_salary}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={fieldErrors.base_salary ? "input-error" : ""}
                   required
                 />
+                {fieldErrors.base_salary && <span className="field-error">{fieldErrors.base_salary}</span>}
               </div>
               <div className="form-group">
                 <label>Net salary (auto)</label>
                 <input
                   type="number"
-                  min="0"
                   name="net_salary"
                   value={formData.net_salary}
                   readOnly
-                  className="readonly-input"
+                  className={`readonly-input ${payrollWarnings.net_salary ? "input-warning" : ""}`}
                 />
+                {payrollWarnings.net_salary && <span className="field-warning">{payrollWarnings.net_salary}</span>}
               </div>
             </div>
 
@@ -149,7 +187,10 @@ const SalaryFormModal = ({ salary, onClose, onSave, saving, error, employees = [
                   name="bonus"
                   value={formData.bonus}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={fieldErrors.bonus ? "input-error" : ""}
                 />
+                {fieldErrors.bonus && <span className="field-error">{fieldErrors.bonus}</span>}
               </div>
               <div className="form-group">
                 <label>Deductions</label>
@@ -159,7 +200,10 @@ const SalaryFormModal = ({ salary, onClose, onSave, saving, error, employees = [
                   name="deductions"
                   value={formData.deductions}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={fieldErrors.deductions ? "input-error" : ""}
                 />
+                {fieldErrors.deductions && <span className="field-error">{fieldErrors.deductions}</span>}
               </div>
             </div>
           </div>
@@ -172,7 +216,7 @@ const SalaryFormModal = ({ salary, onClose, onSave, saving, error, employees = [
             >
               Cancel
             </button>
-            <button type="submit" className="btn-save" disabled={saving}>
+            <button type="submit" className="btn-save" disabled={isSubmitDisabled}>
               {saving ? "Saving..." : "Save"}
             </button>
           </div>

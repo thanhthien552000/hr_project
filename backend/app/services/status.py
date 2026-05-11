@@ -4,10 +4,10 @@ from app.repositories.employee import EmployeeRepository
 
 
 class StatusService:
-    """Service ngắn — chỉ thống kê trạng thái nhân viên."""
+    """Service ngắn — chỉ thống kê trạng thái nhân viên. Chỉ dùng Human DB."""
 
-    def __init__(self, db: AsyncSession):
-        self.employee_repo = EmployeeRepository(db)
+    def __init__(self, human_db: AsyncSession):
+        self.employee_repo = EmployeeRepository(human_db)
 
     async def get_overview(self) -> dict:
         # Đếm theo trạng thái + đếm tổng

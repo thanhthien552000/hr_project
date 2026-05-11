@@ -2,6 +2,7 @@
 -- HR Management - Seed Data (INSERT only)
 -- Bảng đã được tạo bởi Alembic migration
 -- =============================================
+SET NAMES utf8mb4;
 
 -- 1. Departments (10 phòng ban)
 INSERT INTO departments (id, department_name) VALUES
@@ -15,7 +16,6 @@ INSERT INTO departments (id, department_name) VALUES
 (8, 'Phòng Bảo trì'),
 (9, 'Phòng Nghiên cứu & Phát triển'),
 (10, 'Phòng Dịch vụ khách hàng');
-SELECT setval('departments_id_seq', 10);
 
 -- 2. Positions (10 chức vụ)
 INSERT INTO positions (id, position_name) VALUES
@@ -29,7 +29,6 @@ INSERT INTO positions (id, position_name) VALUES
 (8, 'Nhân viên thử việc'),
 (9, 'Thực tập sinh'),
 (10, 'Cố vấn kỹ thuật');
-SELECT setval('positions_id_seq', 10);
 
 -- 3. Employees (10 nhân viên)
 INSERT INTO employees (id, full_name, date_of_birth, gender, phone_number, email, hire_date, department_id, position_id, status, is_deleted) VALUES
@@ -43,7 +42,6 @@ INSERT INTO employees (id, full_name, date_of_birth, gender, phone_number, email
 (8, 'Ngô Thu Lan', '1998-12-12', 'Nữ', '0901122334', 'lan.ngo@company.vn', '2024-03-03', 8, 8, 'Thử việc', false),
 (9, 'Bùi Văn Minh', '1989-10-05', 'Nam', '0933111222', 'minh.bui@company.vn', '2016-11-11', 9, 9, 'Thực tập', false),
 (10, 'Hoàng Thị Oanh', '1994-07-17', 'Nữ', '0909988776', 'oanh.hoang@company.vn', '2020-06-01', 10, 6, 'Đang làm việc', false);
-SELECT setval('employees_id_seq', 10);
 
 -- 4. Attendance (tháng 3 & 4/2026)
 INSERT INTO attendance (employee_id, work_days, absent_days, leave_days, late_days, attendance_month) VALUES

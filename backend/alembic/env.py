@@ -1,3 +1,13 @@
+"""
+NOTE: Alembic is currently NOT used for multi-DB migration.
+Tables are created directly via SQL files:
+  - HumanDB (SQL Server): database/human_sqlserver.sql
+  - Payroll (MySQL):      database/payroll_mysql.sql
+
+This file is kept for reference but migrations should be
+managed via the SQL files above.
+"""
+
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -11,17 +21,18 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from app.core.config import settings
-from app.core.database import Base
-from app.models import * 
+from app.core.database import PayrollBase
+from app.models import *
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL_SYNC)
+# Alembic chỉ quản lý Payroll DB (MySQL) nếu cần
+config.set_main_option("sqlalchemy.url", settings.PAYROLL_DATABASE_URL_SYNC)
 
-target_metadata = Base.metadata
+target_metadata = PayrollBase.metadata
 
 
 def run_migrations_offline() -> None:

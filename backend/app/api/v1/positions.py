@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.response import success_response
-from app.core.dependencies import get_db
+from app.core.dependencies import get_human_db
 from app.models.position import Position
 
 router = APIRouter(prefix="/positions", tags=["Positions"])
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/positions", tags=["Positions"])
 @router.get("")
 async def list_positions(
     search: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_human_db),
 ):
     query = select(Position)
     if search:

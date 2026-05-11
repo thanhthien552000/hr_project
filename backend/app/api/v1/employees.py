@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_db
+from app.core.dependencies import get_human_db
 from app.services.employee import EmployeeService
 from app.schemas.employee import EmployeeCreate, EmployeeUpdate
 from app.common.pagination import PaginationParams
@@ -22,7 +22,7 @@ async def list_employees(
     status_filter: Optional[str] = Query(None, alias="status"),
     sort_by: str = Query("id"),
     sort_order: str = Query("asc"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_human_db),
 ):
     service = EmployeeService(db)
     items, total = await service.get_list(
@@ -37,7 +37,7 @@ async def list_employees(
 async def export_employees_pdf(
     department_id: Optional[int] = Query(None),
     status_filter: Optional[str] = Query(None, alias="status"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_human_db),
 ):
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib import colors
@@ -118,7 +118,7 @@ async def export_employees_pdf(
 @router.get("/{employee_id}")
 async def get_employee(
     employee_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_human_db),
 ):
     service = EmployeeService(db)
     employee = await service.get_by_id(employee_id)
@@ -128,7 +128,7 @@ async def get_employee(
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_employee(
     data: EmployeeCreate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_human_db),
 ):
     service = EmployeeService(db)
     employee = await service.create(data)
@@ -139,7 +139,7 @@ async def create_employee(
 async def update_employee(
     employee_id: int,
     data: EmployeeUpdate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_human_db),
 ):
     service = EmployeeService(db)
     employee = await service.update(employee_id, data)
@@ -149,7 +149,7 @@ async def update_employee(
 @router.delete("/{employee_id}")
 async def delete_employee(
     employee_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_human_db),
 ):
     service = EmployeeService(db)
     result = await service.delete(employee_id)

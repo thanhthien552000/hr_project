@@ -46,8 +46,6 @@ const COLORS = [
 ];
 const itemsPerPage = 5;
 
-const renderPayrollLabel = () => null;
-
 const Dashboard = () => {
   const [month, setMonth] = useState(currentMonthValue());
   const [summary, setSummary] = useState(null);

@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_db
+from app.core.dependencies import get_human_db, get_payroll_db
 from app.services.payroll import PayrollService
 from app.schemas.payroll import SalaryCreate, SalaryUpdate
 from app.common.pagination import PaginationParams
@@ -17,9 +17,10 @@ async def list_payroll(
     pagination: PaginationParams = Depends(),
     month: Optional[str] = Query(None, description="Format: YYYY-MM"),
     department_id: Optional[int] = Query(None),
-    db: AsyncSession = Depends(get_db),
+    payroll_db: AsyncSession = Depends(get_payroll_db),
+    human_db: AsyncSession = Depends(get_human_db),
 ):
-    service = PayrollService(db)
+    service = PayrollService(payroll_db, human_db)
     items, total = await service.get_list(
         offset=pagination.offset, limit=pagination.page_size,
         month=month, department_id=department_id,
@@ -30,9 +31,10 @@ async def list_payroll(
 @router.get("/statistics")
 async def payroll_statistics(
     month: str = Query(..., description="Format: YYYY-MM"),
-    db: AsyncSession = Depends(get_db),
+    payroll_db: AsyncSession = Depends(get_payroll_db),
+    human_db: AsyncSession = Depends(get_human_db),
 ):
-    service = PayrollService(db)
+    service = PayrollService(payroll_db, human_db)
     stats = await service.get_statistics(month)
     return success_response(data=stats)
 
@@ -40,9 +42,10 @@ async def payroll_statistics(
 @router.get("/{salary_id}")
 async def get_salary(
     salary_id: int,
-    db: AsyncSession = Depends(get_db),
+    payroll_db: AsyncSession = Depends(get_payroll_db),
+    human_db: AsyncSession = Depends(get_human_db),
 ):
-    service = PayrollService(db)
+    service = PayrollService(payroll_db, human_db)
     salary = await service.get_by_id(salary_id)
     return success_response(data=salary)
 
@@ -50,9 +53,10 @@ async def get_salary(
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_salary(
     data: SalaryCreate,
-    db: AsyncSession = Depends(get_db),
+    payroll_db: AsyncSession = Depends(get_payroll_db),
+    human_db: AsyncSession = Depends(get_human_db),
 ):
-    service = PayrollService(db)
+    service = PayrollService(payroll_db, human_db)
     salary = await service.create(data)
     return success_response(data=salary, message="Salary record created successfully")
 
@@ -61,8 +65,9 @@ async def create_salary(
 async def update_salary(
     salary_id: int,
     data: SalaryUpdate,
-    db: AsyncSession = Depends(get_db),
+    payroll_db: AsyncSession = Depends(get_payroll_db),
+    human_db: AsyncSession = Depends(get_human_db),
 ):
-    service = PayrollService(db)
+    service = PayrollService(payroll_db, human_db)
     salary = await service.update(salary_id, data)
     return success_response(data=salary, message="Salary record updated successfully")

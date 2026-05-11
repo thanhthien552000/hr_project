@@ -1,11 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Edit2, Plus, X, CalendarDays } from "lucide-react";
 import SearchEmployees from "../InputSearch/Search";
 import "./Attendance.css";
 import { attendanceApi, employeesApi } from "../../../services/hrApi";
 import { displayText, employeeCode, toOptionalNumber } from "../../../utils/formatters";
+import {
+  hasErrors,
+  validateAttendanceForm,
+  visibleErrors,
+} from "../../../utils/validators";
 
 const pageSize = 10;
+const attendanceRelatedFields = {
+  attendance_days: ["attendance_month", "work_days", "absent_days", "leave_days"],
+};
 
 const buildAttendanceForm = (record) => ({
   employee_id: record?.employee_id || "",
@@ -36,7 +44,24 @@ const normalizeAttendancePayload = (payload, isEdit) => {
 const AttendanceFormModal = ({ record, onClose, onSave, saving, error }) => {
   const [formData, setFormData] = useState(() => buildAttendanceForm(record));
   const [employees, setEmployees] = useState([]);
+  const [touchedFields, setTouchedFields] = useState({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const isEdit = Boolean(record);
+  const validationErrors = useMemo(
+    () => validateAttendanceForm(formData, isEdit),
+    [formData, isEdit]
+  );
+  const fieldErrors = useMemo(
+    () =>
+      visibleErrors(
+        validationErrors,
+        touchedFields,
+        submitAttempted,
+        attendanceRelatedFields
+      ),
+    [submitAttempted, touchedFields, validationErrors]
+  );
+  const isSubmitDisabled = saving || hasErrors(validationErrors);
 
   useEffect(() => {
     if (!isEdit) {
@@ -51,8 +76,15 @@ const AttendanceFormModal = ({ record, onClose, onSave, saving, error }) => {
     setFormData((current) => ({ ...current, [name]: value }));
   };
 
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouchedFields((current) => ({ ...current, [name]: true }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    setSubmitAttempted(true);
+    if (hasErrors(validationErrors)) return;
     onSave(normalizeAttendancePayload(formData, isEdit));
   };
 
@@ -65,7 +97,7 @@ const AttendanceFormModal = ({ record, onClose, onSave, saving, error }) => {
             <X size={20} />
           </button>
         </div>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div className="modal-body">
             {error && <div className="form-error">{error}</div>}
 
@@ -79,19 +111,24 @@ const AttendanceFormModal = ({ record, onClose, onSave, saving, error }) => {
                     disabled
                   />
                 ) : (
-                  <select
-                    name="employee_id"
-                    value={formData.employee_id}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="">-- Select employee --</option>
-                    {employees.map((emp) => (
-                      <option key={emp.id} value={emp.id}>
-                        {emp.full_name} ({employeeCode(emp.id)})
-                      </option>
-                    ))}
-                  </select>
+                  <>
+                    <select
+                      name="employee_id"
+                      value={formData.employee_id}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      className={fieldErrors.employee_id ? "input-error" : ""}
+                      required
+                    >
+                      <option value="">-- Select employee --</option>
+                      {employees.map((emp) => (
+                        <option key={emp.id} value={emp.id}>
+                          {emp.full_name} ({employeeCode(emp.id)})
+                        </option>
+                      ))}
+                    </select>
+                    {fieldErrors.employee_id && <span className="field-error">{fieldErrors.employee_id}</span>}
+                  </>
                 )}
               </div>
               <div className="form-group">
@@ -103,10 +140,13 @@ const AttendanceFormModal = ({ record, onClose, onSave, saving, error }) => {
                     name="attendance_month"
                     value={formData.attendance_month}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     disabled={isEdit}
+                    className={fieldErrors.attendance_month ? "input-error" : ""}
                     required={!isEdit}
                   />
                 </div>
+                {fieldErrors.attendance_month && <span className="field-error">{fieldErrors.attendance_month}</span>}
               </div>
             </div>
 
@@ -116,21 +156,29 @@ const AttendanceFormModal = ({ record, onClose, onSave, saving, error }) => {
                 <input
                   type="number"
                   min="0"
+                  max="31"
                   name="work_days"
                   value={formData.work_days}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={fieldErrors.work_days ? "input-error" : ""}
                   required
                 />
+                {fieldErrors.work_days && <span className="field-error">{fieldErrors.work_days}</span>}
               </div>
               <div className="form-group">
                 <label>Absent days</label>
                 <input
                   type="number"
                   min="0"
+                  max="31"
                   name="absent_days"
                   value={formData.absent_days}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={fieldErrors.absent_days ? "input-error" : ""}
                 />
+                {fieldErrors.absent_days && <span className="field-error">{fieldErrors.absent_days}</span>}
               </div>
             </div>
 
@@ -140,22 +188,31 @@ const AttendanceFormModal = ({ record, onClose, onSave, saving, error }) => {
                 <input
                   type="number"
                   min="0"
+                  max="31"
                   name="leave_days"
                   value={formData.leave_days}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={fieldErrors.leave_days ? "input-error" : ""}
                 />
+                {fieldErrors.leave_days && <span className="field-error">{fieldErrors.leave_days}</span>}
               </div>
               <div className="form-group">
                 <label>Late days</label>
                 <input
                   type="number"
                   min="0"
+                  max="31"
                   name="late_days"
                   value={formData.late_days}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={fieldErrors.late_days ? "input-error" : ""}
                 />
+                {fieldErrors.late_days && <span className="field-error">{fieldErrors.late_days}</span>}
               </div>
             </div>
+            {fieldErrors.attendance_days && <span className="field-error">{fieldErrors.attendance_days}</span>}
           </div>
           <div className="modal-footer">
             <button
@@ -166,7 +223,7 @@ const AttendanceFormModal = ({ record, onClose, onSave, saving, error }) => {
             >
               Cancel
             </button>
-            <button type="submit" className="btn-save" disabled={saving}>
+            <button type="submit" className="btn-save" disabled={isSubmitDisabled}>
               {saving ? "Saving..." : "Save"}
             </button>
           </div>

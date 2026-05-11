@@ -2,10 +2,8 @@ from typing import Optional, List, Tuple
 from datetime import date
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.models.attendance import Attendance
-from app.models.employee import Employee
 
 
 class AttendanceRepository:
@@ -33,18 +31,13 @@ class AttendanceRepository:
 
         query = query.order_by(Attendance.attendance_month.desc(), Attendance.id.desc())
         query = query.offset(offset).limit(limit)
-        query = query.options(selectinload(Attendance.employee))
 
         result = await self.db.execute(query)
         records = list(result.scalars().all())
         return records, total
 
     async def get_by_id(self, attendance_id: int) -> Optional[Attendance]:
-        query = (
-            select(Attendance)
-            .where(Attendance.id == attendance_id)
-            .options(selectinload(Attendance.employee))
-        )
+        query = select(Attendance).where(Attendance.id == attendance_id)
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
@@ -59,29 +52,36 @@ class AttendanceRepository:
     async def create(self, attendance: Attendance) -> Attendance:
         self.db.add(attendance)
         await self.db.flush()
-        # Re-query with employee relationship loaded
-        return await self.get_by_id(attendance.id)
+        await self.db.refresh(attendance)
+        return attendance
 
     async def update(self, attendance: Attendance) -> Attendance:
         await self.db.flush()
-        return await self.get_by_id(attendance.id)
+        await self.db.refresh(attendance)
+        return attendance
 
-    async def get_top_absent(self, month_date: date, limit: int = 5) -> List:
+    async def get_top_absent(self, month_date: date, limit: int = 5) -> List[dict]:
+        """Get employees with most absent days — returns raw data without employee names."""
         query = (
             select(
                 Attendance.employee_id,
-                Employee.full_name,
                 func.sum(Attendance.absent_days).label("total_absent"),
                 func.sum(Attendance.leave_days).label("total_leave"),
             )
-            .join(Employee, Attendance.employee_id == Employee.id)
-            .where(Attendance.attendance_month == month_date, Employee.is_deleted == False)
-            .group_by(Attendance.employee_id, Employee.full_name)
+            .where(Attendance.attendance_month == month_date)
+            .group_by(Attendance.employee_id)
             .order_by(func.sum(Attendance.absent_days).desc())
             .limit(limit)
         )
         result = await self.db.execute(query)
-        return list(result.all())
+        return [
+            {
+                "employee_id": row.employee_id,
+                "total_absent": row.total_absent or 0,
+                "total_leave": row.total_leave or 0,
+            }
+            for row in result.all()
+        ]
 
     async def get_month_stats(self, month_date: date) -> dict:
         query = select(
@@ -96,28 +96,33 @@ class AttendanceRepository:
         row = result.one_or_none()
         if row:
             return {
-                "total_work": row.total_work or 0,
-                "total_absent": row.total_absent or 0,
-                "total_leave": row.total_leave or 0,
-                "total_late": row.total_late or 0,
-                "record_count": row.record_count or 0,
+                "total_work": int(row.total_work or 0),
+                "total_absent": int(row.total_absent or 0),
+                "total_leave": int(row.total_leave or 0),
+                "total_late": int(row.total_late or 0),
+                "record_count": int(row.record_count or 0),
             }
         return {"total_work": 0, "total_absent": 0, "total_leave": 0, "total_late": 0, "record_count": 0}
 
-    async def get_excessive_absence(self, month_date: date, threshold: int = 5) -> List:
+    async def get_excessive_absence(self, month_date: date, threshold: int = 5) -> List[dict]:
+        """Get employees with absent_days > threshold — returns raw data without names."""
         query = (
             select(
                 Attendance.employee_id,
-                Employee.full_name,
                 Attendance.absent_days,
                 Attendance.leave_days,
             )
-            .join(Employee, Attendance.employee_id == Employee.id)
             .where(
                 Attendance.attendance_month == month_date,
                 Attendance.absent_days > threshold,
-                Employee.is_deleted == False,
             )
         )
         result = await self.db.execute(query)
-        return list(result.all())
+        return [
+            {
+                "employee_id": row.employee_id,
+                "absent_days": row.absent_days,
+                "leave_days": row.leave_days,
+            }
+            for row in result.all()
+        ]

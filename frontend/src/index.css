@@ -108,6 +108,45 @@ button:disabled {
   font-size: 14px;
 }
 
+/* Field-level validation error message */
+.field-error {
+  display: block;
+  color: #dc2626;
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.field-warning {
+  display: block;
+  color: #b45309;
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+/* Input with validation error */
+.input-error,
+input.input-error,
+select.input-error {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 1px #fecaca;
+}
+
+.input-error:focus {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2) !important;
+}
+
+.input-warning,
+input.input-warning,
+select.input-warning {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 1px #fde68a;
+}
+
 .table-state,
 .chart-empty {
   padding: 24px;

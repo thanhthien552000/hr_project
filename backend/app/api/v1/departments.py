@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.response import success_response
-from app.core.dependencies import get_db
+from app.core.dependencies import get_human_db
 from app.models.department import Department
 
 router = APIRouter(prefix="/departments", tags=["Departments"])
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/departments", tags=["Departments"])
 @router.get("")
 async def list_departments(
     search: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_human_db),
 ):
     query = select(Department)
     if search:

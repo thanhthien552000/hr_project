@@ -1,4 +1,7 @@
-export const currentMonthValue = () => new Date().toISOString().slice(0, 7);
+export const currentMonthValue = () => {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+};
 
 export const formatCurrency = (value) =>
   new Intl.NumberFormat("vi-VN", {

@@ -4,14 +4,26 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import AsyncSessionLocal
+from app.core.database import HumanSessionLocal, PayrollSessionLocal
 from app.core.security import decode_access_token
 
 security_scheme = HTTPBearer()
 
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    async with AsyncSessionLocal() as session:
+async def get_human_db() -> AsyncGenerator[AsyncSession, None]:
+    """Dependency — yields a session connected to Human DB (SQL Server)."""
+    async with HumanSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+async def get_payroll_db() -> AsyncGenerator[AsyncSession, None]:
+    """Dependency — yields a session connected to Payroll DB (MySQL)."""
+    async with PayrollSessionLocal() as session:
         try:
             yield session
             await session.commit()

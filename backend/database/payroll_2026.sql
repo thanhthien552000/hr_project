@@ -1,4 +1,4 @@
--- PostgreSQL version - converted from MySQL (payroll_2026.sql)
+-- MySQL version (payroll_2026.sql)
 -- Source: payroll_2026 database
 
 -- ----------------------------
@@ -16,8 +16,8 @@ DROP TABLE IF EXISTS departments_payroll;
 CREATE TABLE departments_payroll (
   DepartmentID INT PRIMARY KEY,
   DepartmentName VARCHAR(100) NOT NULL,
-  SyncedAt TIMESTAMP DEFAULT NOW()
-);
+  SyncedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------
 -- Records of departments_payroll
@@ -40,8 +40,8 @@ INSERT INTO departments_payroll (DepartmentID, DepartmentName, SyncedAt) VALUES
 CREATE TABLE positions_payroll (
   PositionID INT PRIMARY KEY,
   PositionName VARCHAR(100) NOT NULL,
-  SyncedAt TIMESTAMP DEFAULT NOW()
-);
+  SyncedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------
 -- Records of positions_payroll
@@ -64,11 +64,13 @@ INSERT INTO positions_payroll (PositionID, PositionName, SyncedAt) VALUES
 CREATE TABLE employees_payroll (
   EmployeeID INT PRIMARY KEY,
   FullName VARCHAR(100) NOT NULL,
-  DepartmentID INT REFERENCES departments_payroll(DepartmentID),
-  PositionID INT REFERENCES positions_payroll(PositionID),
+  DepartmentID INT,
+  PositionID INT,
   Status VARCHAR(50),
-  SyncedAt TIMESTAMP DEFAULT NOW()
-);
+  SyncedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (DepartmentID) REFERENCES departments_payroll(DepartmentID),
+  FOREIGN KEY (PositionID) REFERENCES positions_payroll(PositionID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------
 -- Records of employees_payroll
@@ -89,14 +91,15 @@ INSERT INTO employees_payroll (EmployeeID, FullName, DepartmentID, PositionID, S
 -- Table structure for attendance
 -- ----------------------------
 CREATE TABLE attendance (
-  AttendanceID SERIAL PRIMARY KEY,
-  EmployeeID INT REFERENCES employees_payroll(EmployeeID),
+  AttendanceID INT AUTO_INCREMENT PRIMARY KEY,
+  EmployeeID INT,
   WorkDays INT NOT NULL,
   AbsentDays INT DEFAULT 0,
   LeaveDays INT DEFAULT 0,
   AttendanceMonth DATE NOT NULL,
-  CreatedAt TIMESTAMP DEFAULT NOW()
-);
+  CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (EmployeeID) REFERENCES employees_payroll(EmployeeID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------
 -- Records of attendance
@@ -123,21 +126,20 @@ INSERT INTO attendance (AttendanceID, EmployeeID, WorkDays, AbsentDays, LeaveDay
 (19, 9,  16, 0, 2, '2024-09-01', '2025-10-20 19:14:40'),
 (20, 10, 22, 1, 0, '2024-09-01', '2025-10-20 19:14:40');
 
-SELECT setval('attendance_attendanceid_seq', 20);
-
 -- ----------------------------
 -- Table structure for salaries
 -- ----------------------------
 CREATE TABLE salaries (
-  SalaryID SERIAL PRIMARY KEY,
-  EmployeeID INT REFERENCES employees_payroll(EmployeeID),
+  SalaryID INT AUTO_INCREMENT PRIMARY KEY,
+  EmployeeID INT,
   SalaryMonth DATE NOT NULL,
   BaseSalary DECIMAL(12,2) NOT NULL,
   Bonus DECIMAL(12,2) DEFAULT 0.00,
   Deductions DECIMAL(12,2) DEFAULT 0.00,
   NetSalary DECIMAL(12,2) NOT NULL,
-  CreatedAt TIMESTAMP DEFAULT NOW()
-);
+  CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (EmployeeID) REFERENCES employees_payroll(EmployeeID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------
 -- Records of salaries
@@ -163,5 +165,3 @@ INSERT INTO salaries (SalaryID, EmployeeID, SalaryMonth, BaseSalary, Bonus, Dedu
 (18, 8,  '2024-09-01',  7000000.00, 200000.00,      0.00,  7200000.00, '2025-10-20 19:15:00'),
 (19, 9,  '2024-09-01',  5000000.00,      0.00,      0.00,  5000000.00, '2025-10-20 19:15:00'),
 (20, 10, '2024-09-01',  8500000.00, 300000.00, 100000.00,  8700000.00, '2025-10-20 19:15:00');
-
-SELECT setval('salaries_salaryid_seq', 20);
